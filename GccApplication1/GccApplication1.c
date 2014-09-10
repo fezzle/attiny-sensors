@@ -27,54 +27,114 @@ int16_t axisy = 0;
 int16_t axisz = 0;
 uint8_t receiving = FALSE;
 uint8_t loops = 0;
+uint8_t sends;
+uint8_t t0_ovf;
+
+#define SPI_BUFF 4
+uint8_t spi_tx_inprogress = FALSE;
+uint8_t spi_tx_buff[SPI_BUFF];
+uint8_t spi_tx_head = 0;
+uint8_t spi_tx_tail = 0;
+uint8_t spi_overflow = 0;
+
+uint8_t spi_rx_expectedbytes = 0;
+uint8_t spi_rx_buff[SPI_BUFF];
+uint8_t spi_rx_head = 0;
+uint8_t spi_rx_tail = 0;
+
+
 ISR(PCINT_vect) {
 	if (PINB & DRDY) {
 		receiving = TRUE;
 	}
 }
 
-uint8_t sends;
-uint8_t t0_ovf;
-
-uint8_t spi_send_buff[2];
-uint8_t spi_send_pos=0;
-
-
-ISR(USI_OVERFLOW_vect) {
-	// load next SPI send value
-	if (spi_send_pos < SIZEOF(spi_send_buff)) {
-		USIDR = spi_send_buff[spi_send_pos++];
-	} else {
-		spi_send_enabled = FALSE;
+ISR(TIMER0_COMPA_vect) {
+	// set CLOCK bit
+	if (spi_tx_inprogress || spi_rx_inprogress) {
+		PORTB = PORTB | _BV(SCLK);
 	}
 }
 
 ISR(TIMER0_COMPA_vect) {
-	
-}
-
-ISR(TIMER0_OVF_vect) {
-	if (spi_send_enabled) {
-		USICR = (1<<USIWM0)|(1<<USICS1)|(1<<USICLK)|(1<<USITC);
+	// clear CLOCK bit
+	if (spi_tx_inprogress || spi_rx_inprogress) {
+		PORTB = PORTB | _BV(SCLK);
 	}
 }
 
+uint8_t spi_rx_len() {
+	return (spi_rx_tail + SPI_BUFF - spi_rx_head) % SPI_BUFF;
+}
 
+uint8_t spi_tx_isempty() {
+	return spi_tx_head == spi_tx_tail;
+}
 
-void spi_send_hw(uint8_t val) {
+void spi_write(uint8_t val) {
+	uint8_t next_tx_tail = (spi_tx_tail + 1) % SPI_BUFF;
+	if (next_tx_tail == spi_tx_head) {
+		spi_overflow++;
+	} else {
+		spi_tx_buff[spi_tx_head] = val;
+		spi_tx_tail = next_tx_tail;
+	}
+}
+
+uint8_t spi_write_pop() {
+	if (spi_tx_isempty()) {
+		return 0;
+	}
+	uint8_t val = spi_tx_buffer[spi_tx_head];
+	spi_tx_head = (spi_tx_head + 1) % SPI_BUFF;
+	return val;
+}
+
+void spi_start() {
+	if (spi_tx_isempty()) {
+		return;
+	}
+	spi_tx_inprogress = TRUE;
+	
 	// doesn't work as Attiny2313 cannot drive SCLK pin from Timer0_ovf
-	TCNT0 = 0;
-	USIDR = val;
+	// so use Timer0_ovf to clock out UDR and Timer0-CompareA for toggling CLKC pin
+	TCNT0 = 1;
+	OCR0A = 64;
+	OCR0B = 192;
+	TIFR = TIFR | _BV(0CF0B) | _BV(OCF0A) | _BV(TOV0);
+	
+	USIDR = spi_write_pop();
 	USISR = _BV(USIOIF);
 	USICR = _BV(USIWM0)|_BV(USICS0)|_BV(USICLK)|_BV(USIOIE);
 }
 
-void spi_send(uint8_t val) {
-	USIDR = val;
-	USISR = (1<<USIOIF);
-	do {
-		USICR = (1<<USIWM0)|(1<<USICS1)|(1<<USICLK)|(1<<USITC)|(1<<USIOIE);
-	} while ((USISR & (1<<USIOIF)) != 0);
+
+ISR(TIMER0_OVF_vect) {
+}
+
+
+ISR(USI_OVERFLOW_vect) {
+	// load next SPI send value
+	if (spi_tx_inprogress) {
+		if (spi_tx_isempty()) {
+			spi_tx_inprogress = FALSE;
+		} else {
+			USIDR = spi_write_pop();
+		}
+	} else if (spi_rx_inprogress) {
+		uint8_t next_rx_tail = (spi_rx_tail + 1) % (SPI_BUFF);
+		if (next_rx_tail == spi_rx_head) {
+			spi_overflow++;
+		} else {
+			spi_rx_buff[spi_rx_tail] = USIDR;
+			spi_rx_	
+		}
+		
+		USIDR = 
+		spi_rx_head = (spi_rx_head + 1) % (SPI_BUFF);
+	} else {
+		spi_overflow++;
+	}
 }
 
 void micromag_spi_setup() {
@@ -84,7 +144,7 @@ void micromag_spi_setup() {
 	
 	// enable timer0	
 	TCCR0B = _BV(CS00);
-	TIMSK = _BV(TOIE0);
+	TIMSK = _BV(TOIE0) | _BV(OCIE0A) | _BV(OCIE0B);
 }
 
 
@@ -130,7 +190,8 @@ int main(void) {
 		uart_putc('\n');
 		
 		//PORTB = PORTB ^ 0xff;
-		spi_send('a');
+		spi_write('a');
+		spi_start();
 		loops++;
     }
 }

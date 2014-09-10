@@ -36,6 +36,7 @@ SUBDIRS :=
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS +=  \
+../buffer.c \
 ../uart.c \
 ../GccApplication1.c
 
@@ -47,18 +48,22 @@ ASM_SRCS +=
 
 
 OBJS +=  \
+buffer.o \
 uart.o \
 GccApplication1.o
 
 OBJS_AS_ARGS +=  \
+buffer.o \
 uart.o \
 GccApplication1.o
 
 C_DEPS +=  \
+buffer.d \
 uart.d \
 GccApplication1.d
 
 C_DEPS_AS_ARGS +=  \
+buffer.d \
 uart.d \
 GccApplication1.d
 
@@ -73,6 +78,8 @@ OUTPUT_FILE_DEP:= ./makedep.mk
 LIB_DEP+= 
 
 # AVR32/GNU C Compiler
+
+
 
 
 
