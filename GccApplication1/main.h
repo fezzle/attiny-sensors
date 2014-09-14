@@ -26,9 +26,16 @@
 
 #define FREQ 8000000
 #define MYUBBR ((FREQ / (BAUD * 16L)) - 1)
-#define TX_BUFFER_SIZE 30
+#define TX_BUFFER_SIZE 40
 #define RX_BUFFER_SIZE 2
 
-
+#define MOSI PB5
+#define MISO PB6
+#define SCLK PB7
+#define SS PB4
+#define DRDY PB3
+#define RESET PB2
+#define SPI_RX_BUFF 3
+#define SPI_TX_BUFF 3
 
 #endif /* MAIN_H_ */

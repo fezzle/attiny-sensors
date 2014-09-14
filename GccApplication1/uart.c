@@ -13,8 +13,8 @@
 #include "uart.h"
 #include "main.h"
 
-volatile static uint8_t rx_buffer[TX_BUFFER_SIZE];
-volatile static uint8_t tx_buffer[RX_BUFFER_SIZE];
+volatile static uint8_t rx_buffer[RX_BUFFER_SIZE];
+volatile static uint8_t tx_buffer[TX_BUFFER_SIZE];
 volatile static uint8_t rx_head = 0;
 volatile static uint8_t rx_tail = 0;
 volatile static uint8_t tx_head = 0;

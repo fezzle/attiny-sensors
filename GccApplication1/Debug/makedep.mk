@@ -4,6 +4,8 @@
 
 buffer.c
 
+spi.c
+
 uart.c
 
 GccApplication1.c
