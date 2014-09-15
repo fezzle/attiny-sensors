@@ -9,6 +9,8 @@
 #ifndef SPI_H_
 #define SPI_H_
 
+typedef enum {DISABLED, INITIATING, INPROGRESS, TEARDOWN} strategy;
+
 void spi_rx_start();
 
 uint8_t spi_rx_len();

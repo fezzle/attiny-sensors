@@ -11,17 +11,17 @@
 #include <util/delay.h>
 #include "uart.h"
 #include "main.h"
-#include "spi.h"
+#include "micromag.h"
 
+/*
 int16_t rotx = 0;
 int16_t roty = 0;
 uint8_t current_axis = 0;
 int16_t axisx = 0;
 int16_t axisy = 0;
 int16_t axisz = 0;
+*/
 uint8_t loops = 0;
-uint8_t sends;
-
 
 void putnibble(uint8_t val) {
 	if (val >= 10) {
@@ -31,13 +31,11 @@ void putnibble(uint8_t val) {
 	}
 }
 
-
 void puthex(uint8_t val) {
 	putnibble(val >> 4);
 	putnibble(val & 0xf);
 }
 
-extern uint8_t spi_tx_count;
 
 int main(void) {
 	_delay_ms(100);
@@ -45,43 +43,38 @@ int main(void) {
 	DDRB = _BV(MOSI)|_BV(SCLK)|_BV(SS)|_BV(RESET); //BITS4(MOSI, SCLK, SS, RESET);
 	init_uart();
 	sei();
-	
-	// enable interrupt on pcint3 (connected to DRDY)
-	PCMSK = _BV(DRDY);
-	GIMSK = _BV(PCIE);
-	
-	// enable timer0
-	TCCR0B = _BV(CS00);
-	TIMSK = _BV(TOIE0) | _BV(OCIE0A) | _BV(OCIE0B);
-	
-	// Attiny2313 cannot drive SCLK pin from Timer0_ovf
-	// so use Timer0_ovf to clock out UDR and Timer0-CompareA for toggling CLKC pin
-	TCNT0 = 1;
-	OCR0A = 64;
-	OCR0B = 192;
-	TIFR = TIFR | _BV(OCF0B) | _BV(OCF0A) | _BV(TOV0);
-	loops=0;
+	setup_micromag();
+		
 	while(1) {
         //TODO:: Please write your application code 
-		_delay_ms(50);
+		//_delay_ms(500);
+		for (uint8_t j=248; j!=0;) {
+			j++;
+			for (uint16_t i=1; i!=0;) {
+				i++;
+			}
+		}
+
+		uart_puts("s:");
+		puthex(comm_state);
 		
-		uart_puts("spi_tx_count:");
-		puthex(spi_tx_count);
+		uart_puts(" x:");
+		puthex((uint8_t)(resultvector[0]>>8));
+		puthex((uint8_t)resultvector[0]);
 		
-		uart_puts(" TCNTO:");
-		puthex(TCNT0);
+		uart_puts(" y:");
+		puthex((uint8_t)(resultvector[1]>>8));
+		puthex((uint8_t)resultvector[1]);
+
+		uart_puts(" z:");
+		puthex((uint8_t)(resultvector[2]>>8));
+		puthex((uint8_t)resultvector[2]);
 		
-		uart_puts(" s:");
-		puthex(sends);
+		uart_puts(" l:");
+		puthex(loops);	
 		
-		uart_puts(" loops:");
-		puthex(loops);
 		uart_putc('\n');
 		
-		//PORTB = PORTB ^ 0xff;
-		spi_tx_push('a');
-		spi_tx_push('b');
-		spi_tx_start();
 		loops++;
     }
 }

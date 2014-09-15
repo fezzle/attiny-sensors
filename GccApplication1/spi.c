@@ -11,7 +11,7 @@
 
 uint8_t spi_tx_byte = 0;
 uint8_t spi_tx_bitcount = 0;
-uint8_t spi_tx_inprogress = FALSE;
+uint8_t spi_tx_state = DISABLED;
 uint8_t spi_tx_buff[SPI_TX_BUFF];
 uint8_t spi_tx_head = 0;
 uint8_t spi_tx_tail = 0;
@@ -20,7 +20,7 @@ uint8_t spi_tx_count = 0;
 
 uint8_t spi_rx_byte = 0;
 uint8_t spi_rx_bitcount = 0;
-uint8_t spi_rx_inprogress = FALSE;
+uint8_t spi_rx_state = FALSE;
 uint8_t spi_rx_expectedbytes = 0;
 uint8_t spi_rx_buff[SPI_RX_BUFF];
 uint8_t spi_rx_head = 0;
@@ -28,16 +28,16 @@ uint8_t spi_rx_tail = 0;
 
 
 ISR(PCINT_vect) {
-	spi_rx_inprogress = TRUE;
+	//spi_rx_state = TRUE;
 }
 
 
 ISR(TIMER0_OVF_vect) {
 	// set CLOCK bit
-	if (spi_tx_inprogress) {
+	if (spi_tx_state == INPROGRESS || spi_tx_state == INITIATING) {
 		if (spi_tx_bitcount == 8) {
 			if (spi_tx_isempty()) {
-				spi_tx_inprogress = FALSE;
+				spi_tx_state = TEARDOWN;
 				return;
 			}
 			spi_tx_count++;
@@ -51,35 +51,49 @@ ISR(TIMER0_OVF_vect) {
 		}
 		spi_tx_byte = spi_tx_byte << 1;
 		spi_tx_bitcount++;
-	}
-	if (spi_rx_inprogress) {
-		if (spi_rx_bitcount == 8) {
-			if (spi_rx_len() == spi_rx_expectedbytes - 1) {
-				spi_rx_inprogress = FALSE;
-				return;
-			}
-			spi_rx_bitcount = 0;
-			spi_rx_push(spi_rx_byte);
-		}
-		spi_rx_byte = (spi_rx_byte << 1) | ((PINB >> MISO) & 1);
-		spi_rx_bitcount++;
-	}
-}
+		
+		spi_tx_state = INPROGRESS;
+	} 
 
+ }
+
+// DISABLED, INITIATING, INPROGRESS, TEARDOWN
 ISR(TIMER0_COMPA_vect) {
-	if (spi_tx_inprogress || spi_rx_inprogress) {
+	if (spi_tx_state == INPROGRESS || spi_tx_state == TEARDOWN) {
 		PORTB = PORTB | _BV(SCLK);
 	} else {
 		PORTB = PORTB & (~_BV(SCLK));
 	}
+	
+	if (spi_rx_state == INITIATING) {
+		spi_rx_state = INPROGRESS;
+	}
+	
 }
 
 ISR(TIMER0_COMPB_vect) {
+   if (spi_rx_state == INPROGRESS) {
+	   if (spi_rx_bitcount == 8) {
+		   if (spi_rx_len() == spi_rx_expectedbytes - 1) {
+			   spi_rx_state = DISABLED;
+			   return;
+		   }
+		   spi_rx_bitcount = 0;
+		   spi_rx_push(spi_rx_byte);
+	   }
+	   spi_rx_byte = (spi_rx_byte << 1) | ((PINB >> MISO) & 1);
+	   spi_rx_bitcount++;
+   }
+	
 	// clear CLOCK bit
-	if (spi_tx_inprogress || spi_rx_inprogress) {
-		PORTB = PORTB & (~_BV(SCLK));
+	// something is in progress or in teardown
+	PORTB = PORTB & (~_BV(SCLK));
+
+	if (spi_tx_state == TEARDOWN) {
+		spi_tx_state = DISABLED;
 	}
 }
+
 
 uint8_t spi_rx_len() {
 	return (spi_rx_tail + SPI_RX_BUFF - spi_rx_head) % SPI_RX_BUFF;
@@ -128,6 +142,8 @@ void spi_tx_start() {
 	if (spi_tx_isempty()) {
 		return;
 	}
-	spi_tx_bitcount = 8;
-	spi_tx_inprogress = TRUE;
+	if (spi_tx_state == DISABLED) {
+		spi_tx_bitcount = 8;
+		spi_tx_state = INITIATING;
+	}
 }

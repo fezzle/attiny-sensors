@@ -4,6 +4,8 @@
 
 buffer.c
 
+micromag.c
+
 spi.c
 
 uart.c

@@ -130,6 +130,12 @@
     <Compile Include="main.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="micromag.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="micromag.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="spi.c">
       <SubType>compile</SubType>
     </Compile>
