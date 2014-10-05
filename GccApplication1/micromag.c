@@ -30,6 +30,7 @@ enum { INITIATING,
 	} state = INITIATING;
 
 enum { X=1, Y=2, Z=3} axis;
+	
 volatile int16_t resultword;
 volatile int16_t resultvector[3];
 volatile uint8_t commandbyte;
@@ -128,7 +129,7 @@ void setup_micromag() {
 
 	// enable timer0
 	TCCR0B = _BV(CS01);
-	TIMSK = _BV(TOIE0) | _BV(OCIE0A) | _BV(OCIE0B);
+	TIMSK = TIMSK | _BV(TOIE0) | _BV(OCIE0A) | _BV(OCIE0B);
 
 	// use Timer0_ovf to clock out UDR and CompareA,CompareB for toggling CLKC pin
 	// TX will set pin on Timer0_ovf, RX will read pin on CompareB before clearing pin

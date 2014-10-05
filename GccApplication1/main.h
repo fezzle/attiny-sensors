@@ -29,6 +29,7 @@
 #define TX_BUFFER_SIZE 36
 #define RX_BUFFER_SIZE 2
 
+// spi on portb
 #define MOSI PB5
 #define MISO PB6
 #define SCLK PB7
@@ -36,4 +37,11 @@
 #define DRDY PB3
 #define RESET PB2
 
+// ppm on portd
+#define PPM_PIN PD2
+#define CH5_PIN PD3
+#define CH6_PIN PD4
+#define CH7_PIN PD5
+#define CH8_PIN PD6
+ 
 #endif /* MAIN_H_ */
