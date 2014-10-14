@@ -18,10 +18,10 @@ uint8_t currentchannel;
 ** High signal is marked from current point until Timer1 OVF
 ** Low signal is from Timer1 OVF to Compare A.
 */
-/*
+
 ISR(TIMER1_COMPA_vect) {
 	// set PPM_PIN for channel[currentchannel] time plus 500
-	int8_t val=0;
+	int16_t val=0;
 	switch (currentchannel) {
 		case 6:	val = ch6;
 				PORTD = PORTD | _BV(CH6_PIN);
@@ -32,7 +32,7 @@ ISR(TIMER1_COMPA_vect) {
 		case 8: val = 5000;
 				break;
 	}
-	TCNT1 = -(1500 + val);		
+	TCNT1 = -(1500 + val);
 	PORTD = PORTD | _BV(PPM_PIN);
 }
 
@@ -46,14 +46,14 @@ ISR(TIMER1_OVF_vect) {
 				break;
 	}
 
-	PORTD = PORTD | _BV(PPM_PIN);
+	PORTD = PORTD & ~_BV(PPM_PIN);
 
 	currentchannel++;
 	if (currentchannel == 9) {
 		currentchannel = 1;
 	}
 }
-*/
+
 
 void init_ppm() {
 	TCCR1B = _BV(CS11);

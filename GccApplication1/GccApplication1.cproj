@@ -121,12 +121,6 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="fxpt_atan2.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="fxpt_atan2.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="main.h">
       <SubType>compile</SubType>
     </Compile>

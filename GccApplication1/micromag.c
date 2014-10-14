@@ -125,7 +125,6 @@ ISR(TIMER0_COMPB_vect) {
 void setup_micromag() {
 	// enable interrupt on pcint3 (connected to DRDY)
 	PCMSK = _BV(DRDY);
-	GIMSK = _BV(PCIE);
 
 	// enable timer0
 	TCCR0B = _BV(CS01);
