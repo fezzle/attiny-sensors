@@ -13,14 +13,9 @@
 #include "uart.h"
 #include "main.h"
 
-volatile static uint8_t rx_buffer[RX_BUFFER_SIZE];
 volatile static uint8_t tx_buffer[TX_BUFFER_SIZE];
-volatile static uint8_t rx_head = 0;
-volatile static uint8_t rx_tail = 0;
 volatile static uint8_t tx_head = 0;
 volatile static uint8_t tx_tail = 0;
-volatile static uint8_t sent = TRUE;
-
 
 /*
  * init_uart
@@ -29,79 +24,11 @@ void init_uart(void) {
   // set baud rate
   UBRRH = (uint8_t)(MYUBBR >> 8); 
   UBRRL = (uint8_t)(MYUBBR);
-  // enable receive and transmit
-  UCSRB = (1 << RXEN) | (1 << TXEN) | (1 << RXCIE);
+  // enable transmit
+  UCSRB = (1 << TXEN);
   // set frame format
   UCSRC = (1 << USBS) | (3 << UCSZ0);	// asynchron 8n1
 }
-
-
-/*
- * send_uart
- * Sends a single char to UART without ISR
- */
-void send_uart(uint8_t c) {
-  // wait for empty data register
-  while (!(UCSRA & (1<<UDRE)));
-  // set data into data register
-  UDR = c;
-}
-
-
-
-/*
- * receive_uart
- * Receives a single char without ISR
- */
-uint8_t receive_uart() {
-  while ( !(UCSRA & (1<<RXC)) ) 
-    ; 
-  return UDR; 
-}
-
-
-
-/*
- * uart_getc
- * Gets a single char from the receive buffer.
- * return	uint16_r	the received char or UART_NO_DATA 
- */
-uint16_t uart_getc(void) {
-  uint8_t c = 0;
-  uint8_t tmp_tail = 0;
-  if (rx_head == rx_tail) {
-    return UART_NO_DATA;
-  }
-  tmp_tail = (rx_tail + 1) % RX_BUFFER_SIZE;
-  c = rx_buffer[rx_tail];
-  rx_tail = tmp_tail;
-  return c;
-}
-
-
-
-/*
- * uart_getc_f
- * getc in stdio style.
- */
-int uart_getc_f(FILE *stream) {
-  uint16_t c;
-  while ((c = uart_getc()) == UART_NO_DATA) {}
-  return c;
-}
-
-
-
-/*
- * uart_getc_wait
- * Blocking call to getc. Will not return until a char is received.
- */
-uint8_t uart_getc_wait(void) {
-  uint16_t c;
-  while ((c = uart_getc()) == UART_NO_DATA) {}
-  return c;
-}
-
 
 
 /*
@@ -113,25 +40,13 @@ void uart_putc(uint8_t c) {
   uint8_t tmp_head = (tx_head + 1) % TX_BUFFER_SIZE;
   // wait for space in buffer
   while (tmp_head == tx_tail) {
-    ;
+	;// return;
   }
   tx_buffer[tx_head] = c;
   tx_head = tmp_head;
   // enable uart data interrupt (send data)
   UCSRB |= (1<<UDRIE);
 }
-
-
-
-/*
- * uart_putc_f
- * Puts a single char. Used by printf functions.
- */
-int uart_putc_f(char c, FILE *stream) {
-  uart_putc(c);
-  return 0;
-}
-
 
 
 /*
@@ -146,21 +61,8 @@ void uart_puts(const char *s) {
 }
 
 
-
 /*
- * uart_puts_P
- * Sends a PROGMEM string.
- */
-void uart_puts_P(const char *s) {
-  while (pgm_read_byte(s) != 0x00) {
-    uart_putc(pgm_read_byte(s++));
-  }
-}
-
-
-
-/*
- * ISR User Data Regiser Empty
+ * ISR User Data Register Empty
  * Send a char out of buffer via UART. If sending is complete, the 
  * interrupt gets disabled.
  */
@@ -178,19 +80,3 @@ ISR(USART_UDRE_vect) {
 }
 
 
-
-/*
- * ISR RX complete
- * Receives a char from UART and stores it in ring buffer.
- */
-ISR(USART_RX_vect) {
-  uint8_t tmp_head = 0;
-  tmp_head = (rx_head + 1) % RX_BUFFER_SIZE;
-  if (tmp_head == rx_tail) {
-    // buffer overflow error!
-  }
-  else {
-    rx_buffer[rx_head] = UDR;
-    rx_head = tmp_head;
-  }
-}

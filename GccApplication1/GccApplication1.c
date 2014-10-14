@@ -16,7 +16,7 @@
 
 
 extern uint8_t comm_state;
-extern uint16_t resultvector[];
+extern int16_t resultvector[];
 extern uint8_t micromag_reads;
 extern int16_t ch6;
 extern int16_t ch7;
@@ -36,11 +36,11 @@ void puthex(uint8_t val) {
 	putnibble(val & 0xf);
 }
 
+static const int16_t NUMS[] = { 10000, 1000, 100, 10, 1 };
 void putsigned(int16_t val) {
 	/*
 	** Prints a 16-bit signed value using uart_putc.
 	*/
-	static int16_t NUMS[] = { 10000, 1000, 100, 10, 1 };
 	if (val < 0) {
 		uart_putc('-');
 		val = -val;
@@ -60,11 +60,14 @@ void putsigned(int16_t val) {
 	}
 }
 
-
-uint16_t hackatan(int16_t y, int16_t x) {
+int16_t ox, oy;
+int16_t xy;
+int16_t xy2;
+int16_t hackatan(int16_t y, int16_t x) {
 	// x is percentage of angle [0,100] 
 	// y is angle 0..45
 	// y ={ [-150 + 310 * x - (x*x DIV 2) - (x*x DIV 3) ] DIV 50 + 5 } DIV 10
+		
 	char flipped = FALSE;
 	char xneg = FALSE;
 	char yneg = FALSE;
@@ -76,35 +79,55 @@ uint16_t hackatan(int16_t y, int16_t x) {
 		yneg = TRUE;
 		y = -y;
 	}
+	while (x>256 || y>256) {
+		x = x >> 1;
+		y = y >> 1;	
+	}
+	ox = x;
+	oy = y;
+	if (!yneg && x==0) {
+		return 90;
+	} else if (yneg && x==0) {
+		return -90;
+	} else if (y==0) {
+		if (!xneg) {
+			return 0;
+		} else if (yneg) {
+			return -180;
+		} else {
+			return 180;
+		}
+	}
 	
-	if (x < y) {
-		x = (y >> 7) * 100 / (x>>7);
+	
+	if (y < x) {
+		xy = (y * 100) / x;
 	} else {
 		flipped = TRUE;
-		x = (x >> 7) * 100 / (y>>7);
+		xy = (x * 100) / y;
 	}
 	
-	uint16_t x2 = x * x;
-	int16_t res = ((-150 + (310 * x) - (x2 / 3) - (x2 / 3)) / 50 + 5) / 10;
+	xy2 = xy * xy;
+	int16_t acc = -150;
+	acc = acc + (int16_t)310 * xy;
+	acc = acc - (xy2 / 2);
+	acc = acc - (xy2 / 3);
+	acc = acc / 50;
+	acc = acc + 5;
+	acc = acc / 10;
 
 	if (flipped) {
-		res = 90 - res;
+		acc = 90 - acc;
 	}
 	if (xneg ^ yneg) {
-		res = -res;
+		acc = -acc;
 	}
 	if (!yneg && xneg) {
-		res = res + 90;
+		acc = acc + 180;
 	} else if (yneg && xneg) {
-		res = res - 90;
-	} else if (!yneg && xneg==0) {
-		res = 45;
-	} else if (yneg && xneg==0) {
-		res = -45;
-	} else {
-		res = 0;
-	}
-	return res;
+		acc = acc - 180;
+	} 
+	return acc;
 }
 
 
@@ -122,8 +145,8 @@ int main(void) {
         //TODO:: Please write your application code 
 		_delay_ms(500);
 		
-		ch6 = hackatan(resultvector[1], (resultvector[0]>>7));
-		ch7 = hackatan(resultvector[2], (resultvector[1]>>7));
+		ch6 = hackatan(resultvector[1], resultvector[0]);
+		ch7 = hackatan(resultvector[2], resultvector[1]);
 	 	
 		uart_puts("s:");
 		puthex(comm_state);
@@ -141,29 +164,36 @@ int main(void) {
 		puthex((uint8_t)resultvector[2]);
 		*/
 		
-		#if FALSE
-			
+		#if TRUE
 			uart_puts(" x:");
-			putsigned(resultvector[0]);
+			//putsigned(resultvector[0]);
+			putsigned(ox);
 
 			uart_puts(" y:");
-			putsigned(resultvector[1]);
+			//putsigned(resultvector[1]);
+			putsigned(oy);
 			
+			uart_puts(" xy:");
+			putsigned(xy);
+			
+			uart_puts( " xy^2:");
+			putsigned(xy2);
+			
+			uart_puts(" 6:");
+			putsigned(ch6);			
+		# else 
+		
 			uart_puts(" z:");
 			putsigned(resultvector[2]);
-		# else 
-			uart_puts(" x:");
-			putsigned(ch6);
 		
-			uart_puts(" y:");
+			uart_puts(" 7:");
 			putsigned(ch7);
 		# endif
 			
-		uart_puts(" l:");
-		puthex(loops);	
-		
-		uart_puts(" r:");
-		puthex(micromag_reads);
+		//uart_puts(" l:");
+		//puthex(loops);	
+		//uart_puts(" r:");
+		//puthex(micromag_reads);
 		
 		uart_putc('\n');
 		

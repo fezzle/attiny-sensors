@@ -32,6 +32,7 @@ enum { INITIATING,
 enum { X=1, Y=2, Z=3} axis;
 	
 volatile int16_t resultword;
+volatile int16_t zerovector[3];
 volatile int16_t resultvector[3];
 volatile uint8_t commandbyte;
 volatile uint8_t spi_tx_bitcount;
@@ -115,7 +116,10 @@ ISR(TIMER0_COMPB_vect) {
 	if (comm_state == SPI_RX_INPROGRESS) {
 		resultword = (resultword << 1) | ((PINB >> MISO) & 1);
 		if (spi_rx_bitcount++ == 16) {
-			resultvector[axis-X] = resultword;
+			if (! (PINB & _BV(RESETBUTTON))) {
+				zerovector[axis-X] = resultword;
+			}
+			resultvector[axis-X] = resultword - zerovector[axis-X];
 			comm_state = START_RESET;
 			comm_delay = 10;
 		}

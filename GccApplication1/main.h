@@ -26,8 +26,8 @@
 
 #define FREQ 8000000
 #define MYUBBR ((FREQ / (BAUD * 16L)) - 1)
-#define TX_BUFFER_SIZE 36
-#define RX_BUFFER_SIZE 2
+#define TX_BUFFER_SIZE 24
+#define RX_BUFFER_SIZE 0
 
 // spi on portb
 #define MOSI PB5
@@ -36,6 +36,7 @@
 #define SS PB4
 #define DRDY PB3
 #define RESET PB2
+#define RESETBUTTON PB1
 
 // ppm on portd
 #define PPM_PIN PD2
